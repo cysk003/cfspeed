@@ -18,9 +18,9 @@ const (
 
 func printMetadata(printer *log.Logger, metadata *MeasurementMetadata) {
 	if metadata != nil {
-		printer.Printf("SrcIP: %s (AS%s)\n", metadata.SrcIP, metadata.SrcASN)
-		printer.Printf("SrcLocation: %s, %s\n", metadata.SrcCity, metadata.SrcCountry)
-		printer.Printf("DstColocation: %s\n", metadata.DstColo)
+		printer.Printf("SrcIP: %s (AS%s - %s)\n", metadata.SrcIP, metadata.SrcASN, metadata.SrcASName)
+		printer.Printf("SrcLocation: %s, %s, %s\n", metadata.SrcCity, metadata.SrcRegion, metadata.SrcCountry)
+		printer.Printf("DstColocation: %s (%s, %s)\n", metadata.DstColoCode, metadata.DstColoCity, metadata.DstColoCountry)
 	}
 }
 
