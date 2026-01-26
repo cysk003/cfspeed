@@ -1,6 +1,7 @@
 package cfspeed
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ const (
 	DirectionDownlink = "down"
 	DirectionUplink   = "up"
 
+	metaURL         = "https://speed.cloudflare.com/meta"
 	downURLTemplate = "https://speed.cloudflare.com/__down?bytes=%d"
 	upURLTemplate   = "https://speed.cloudflare.com/__up"
 
@@ -26,9 +28,14 @@ const (
 type MeasurementMetadata struct {
 	SrcIP      string
 	SrcASN     string
+	SrcASName  string
 	SrcCity    string
+	SrcRegion  string
 	SrcCountry string
-	DstColo    string
+
+	DstColoCode    string
+	DstColoCity    string
+	DstColoCountry string
 }
 
 type SpeedMeasurement struct {
@@ -52,6 +59,20 @@ type SpeedMeasurementStats struct {
 	Max          float64
 	Deciles      []float64
 	CatSpeed     float64
+}
+
+type cfMetadata struct {
+	ClientIp       string
+	Asn            int
+	AsOrganization string
+	Country        string
+	City           string
+	Region         string
+	Colo           struct {
+		Iata string
+		Cca2 string
+		City string
+	}
 }
 
 func flushHTTPResponse(resp *http.Response, maxSize int64, flushUntil time.Time) (int64, *IOSampler, error) {
@@ -203,31 +224,59 @@ func measureSpeedMultiplexed(measurementFunc func(_ int64, _ time.Time) (*SpeedM
 }
 
 func GetMeasurementMetadata() (*MeasurementMetadata, error) {
-	resp, err := http.Get(fmt.Sprintf(downURLTemplate, 0))
+	req, err := http.NewRequest("GET", metaURL, nil)
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = flushHTTPResponse(resp, 0, time.Now())
+	req.Header.Set("Referer", "https://speed.cloudflare.com/")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBodyText, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	srcCity := resp.Header.Get("cf-meta-city")
+	var metadata cfMetadata
+	if err := json.Unmarshal(respBodyText, &metadata); err != nil {
+		return nil, err
+	}
+
+	srcASName := metadata.AsOrganization
+	if srcASName == "" {
+		srcASName = "N/A"
+	}
+
+	srcCity := metadata.City
 	if srcCity == "" {
 		srcCity = "N/A"
 	}
 
-	srcCountry := resp.Header.Get("cf-meta-country")
+	srcRegion := metadata.Region
+	if srcRegion == "" {
+		srcRegion = "N/A"
+	}
+
+	srcCountry := metadata.Country
 	if srcCity == "" {
 		srcCity = "N/A"
 	}
 
 	return &MeasurementMetadata{
-		SrcIP:      resp.Header.Get("cf-meta-ip"),
-		SrcASN:     resp.Header.Get("cf-meta-asn"),
-		SrcCity:    srcCity,
-		SrcCountry: srcCountry,
-		DstColo:    resp.Header.Get("cf-meta-colo"),
+		SrcIP:          metadata.ClientIp,
+		SrcASN:         fmt.Sprintf("%d", metadata.Asn),
+		SrcASName:      metadata.AsOrganization,
+		SrcCity:        srcCity,
+		SrcRegion:      srcRegion,
+		SrcCountry:     srcCountry,
+		DstColoCode:    metadata.Colo.Iata,
+		DstColoCity:    metadata.Colo.City,
+		DstColoCountry: metadata.Colo.Cca2,
 	}, nil
 }
 
