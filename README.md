@@ -18,10 +18,6 @@ Refer to [the official Go documentation](https://golang.org/doc/install/source#e
 
 Note that the shell script depends on Zip, tar and gzip for packaging.
 
-## Notes
-
-- On Debian/Ubuntu, you will need to install `ca-certificates`. Otherwise errors regarding TLS would be raised.
-
 ## Dear Cloudflare
 
 I wrote this application since I sincerely love your Speed Test and [the running rabbit](https://speed.cloudflare.com/static/img/speedrabbit-animate.gif). Why don't we make this official? I'm more than happy to donate these codes.
