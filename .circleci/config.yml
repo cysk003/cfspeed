@@ -13,6 +13,10 @@ executors:
     docker:
       - image: ubuntu:rolling
     resource_class: arm.medium
+  archlinux:
+    docker:
+      - image: archlinux
+    resource_class: medium
   windows:
     machine:
       image: windows-server-2025-gui:current
@@ -101,24 +105,18 @@ jobs:
           command: ./cfspeed -m 8
 
   release:
-    executor: ubuntu-docker-amd64
+    executor: archlinux
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            apt update
-            apt install -y curl git
-
-            tmpPath=$(mktemp)
-            curl -sSJL https://api.github.com/repos/cli/cli/releases/latest | grep -o 'https://github.com/cli/cli/releases/download/[^/]\{1,\}/gh_[^/]\{1,\}_linux_amd64.deb' | xargs curl -o $tmpPath -JL
-            dpkg -i $tmpPath
       - attach_workspace:
           at: .
+      - run:
+          name: Install dependencies
+          command: pacman -Syu --noconfirm curl git gh
       - run:
           name: Create a release
           command: |
             . BUILD_NAME
-            gh release create -R "${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}" -t "${BUILD_NAME}" -n "" "${BUILD_NAME}" --target "${CIRCLE_SHA1}" ./*.tar.gz ./*.zip
+            gh release create -R "${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}" -t "${BUILD_NAME}" -n "" "${BUILD_NAME}" --target "${CIRCLE_SHA1}" *.tar.gz *.zip
 
 workflows:
   build-test-release:
