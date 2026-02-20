@@ -111,7 +111,7 @@ jobs:
           at: .
       - run:
           name: Install dependencies
-          command: pacman -Syu --noconfirm curl git gh
+          command: pacman -Syu --noconfirm curl git github-cli
       - run:
           name: Create a release
           command: |
