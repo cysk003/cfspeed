@@ -21,8 +21,10 @@ const (
 	rttMeasurementDurationMax = 2 * time.Second   // Maximum duration of RTT measurement
 	rttMeasurementMax         = 20                // Maximum number of pings to be made for RTT measurement
 	speedMeasurementDuration  = 10 * time.Second  // Download / Upload continues until exceeding this time duration
-	downloadSizeMax           = 512 * 1024 * 1024 // Maximum size of data to be downloaded; 512 MiB
-	uploadSizeMax             = 512 * 1024 * 1024 // Maximum size of data to be uploaded; 512 MiB
+	downloadSize              = 512 * 1024 * 1024 // Size of data to be downloaded in 1 HTTP request; 512 MiB
+	uploadSize                = 512 * 1024 * 1024 // Size of data to be uploaded in 1 HTTP request; 512 MiB
+
+	httpReferer = "https://github.com/makotom/cfspeed" // Referer value in HTTP requests if set
 )
 
 type MeasurementMetadata struct {
@@ -75,6 +77,23 @@ type cfMetadata struct {
 	}
 }
 
+func httpGetWithReferer(url string, refer string) (*http.Response, error) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Referer", refer)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func flushHTTPResponse(resp *http.Response, maxSize int64, flushUntil time.Time) (int64, *IOSampler, error) {
 	drain := InitSamplingReaderWriter(maxSize, flushUntil)
 
@@ -103,7 +122,7 @@ func doDownlinkMeasurement(maxSize int64, measureUntil time.Time) (*SpeedMeasure
 	getURL := fmt.Sprintf(downURLTemplate, maxSize)
 	start := time.Now()
 
-	resp, err := http.Get(getURL)
+	resp, err := httpGetWithReferer(getURL, httpReferer)
 	if err != nil {
 		return nil, err
 	}
@@ -224,18 +243,10 @@ func measureSpeedMultiplexed(measurementFunc func(_ int64, _ time.Time) (*SpeedM
 }
 
 func GetMeasurementMetadata() (*MeasurementMetadata, error) {
-	req, err := http.NewRequest("GET", metaURL, nil)
+	resp, err := httpGetWithReferer(metaURL, httpReferer)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Referer", "https://speed.cloudflare.com/")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 
 	respBodyText, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -305,17 +316,17 @@ func MeasureRTT() (*Stats, *Stats, error) {
 }
 
 func MeasureDownlink() (*SpeedMeasurementStats, error) {
-	return measureSpeedSingle(doDownlinkMeasurement, downloadSizeMax)
+	return measureSpeedSingle(doDownlinkMeasurement, downloadSize)
 }
 
 func MeasureDownlinkMultiplexed(multiplicity int) (*SpeedMeasurementStats, error) {
-	return measureSpeedMultiplexed(doDownlinkMeasurement, downloadSizeMax, multiplicity)
+	return measureSpeedMultiplexed(doDownlinkMeasurement, downloadSize, multiplicity)
 }
 
 func MeasureUplink() (*SpeedMeasurementStats, error) {
-	return measureSpeedSingle(doUplinkMeasurement, uploadSizeMax)
+	return measureSpeedSingle(doUplinkMeasurement, uploadSize)
 }
 
 func MeasureUplinkMultiplexed(multiplicity int) (*SpeedMeasurementStats, error) {
-	return measureSpeedMultiplexed(doUplinkMeasurement, uploadSizeMax, multiplicity)
+	return measureSpeedMultiplexed(doUplinkMeasurement, uploadSize, multiplicity)
 }
