@@ -79,6 +79,8 @@ for goos in "${GOOS_LIST[@]}"; do
             build_gc "${goos}" "${goarch}"
         fi
 
-        package "${goos}" "${goarch}"
+        if ! [[ "${NO_PACKAGE:-}" ]]; then
+            package "${goos}" "${goarch}"
+        fi
     done
 done
