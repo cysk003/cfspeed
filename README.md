@@ -8,10 +8,10 @@ See https://github.com/makotom/cfspeed/releases for prebuilt binaries.
 
 ## Build it for yourself
 
-E.g. if you are to build an executable for Linux on x86-64 (AMD64), you would run:
+E.g., if you are to build an executable for Linux on x86-64 (AMD64) without packaging it in a tarball, you would run:
 
 ```
-GOOS_LIST_OVERRIDE=("linux") GOARCH_LIST_OVERRIDE=("amd64") ./build-and-pack-all.sh
+GOOS_LIST_OVERRIDE=("linux") GOARCH_LIST_OVERRIDE=("amd64") NO_PACKAGE=1 ./build-and-pack-all.sh
 ```
 
 Refer to [the official Go documentation](https://golang.org/doc/install/source#environment) for valid combinations of `GOOS` and `GOARCH`.
